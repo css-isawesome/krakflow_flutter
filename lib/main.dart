@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'task_repository.dart';
 
 void main() {
   runApp(MyApp());
@@ -11,12 +12,10 @@ class MyApp extends StatelessWidget {
   //   Task(title: "Przeczytac o widgetach", deadline: "w tym tygodniu")
   // ];
 
-  final List<Task> tasks = [
-    Task(title: "Analiza danych", deadline: "jutro", done: true, priority: "wysoki"),
-    Task(title: "Witryny internetowe", deadline: "w przyszlym tygodniu", done: false, priority: "sredni"),
-    Task(title: "Zadanie z Fluttera", deadline: "dzisiaj", done: true, priority: "niski"),
-    Task(title: "Rownania rozniczkowe", deadline: "jutro", done: false, priority: "sredni")
-  ];
+  final List<Task> tasks = TaskRepository.tasks;
+
+  MyApp({super.key});
+
 
   @override
   Widget build(BuildContext context) {
@@ -26,39 +25,61 @@ class MyApp extends StatelessWidget {
           title: Text("KrakFlow"), // glowna zawartosc ekranu
         ),
         body: Padding(
-            padding: EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+          padding: EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
               Text("Masz dzis ${tasks.length} zadania"),
               SizedBox(height: 16),
               Text("Dzisiejsze zadania"),
-              Expanded(child: // poniewaz list view znajduje sie wewnatrz Column, trzeba uzyc expanded
-              ListView.builder(
-                itemCount: tasks.length,
-                itemBuilder: (context, index) {
-                  // return Text("${tasks[index].done ? Icons.check_circle : Icons.radio_button_unchecked} ${tasks[index].title}\n ${tasks[index].deadline}");
-                  return TaskCard(title: tasks[index].title, subtitle: "termin: ${tasks[index].deadline} | priorytet: ${tasks[index].priority}", icon: tasks[index].done ? Icons.check_circle : Icons.radio_button_unchecked);
-              },
-            ),
+              Expanded(
+                child: // poniewaz list view znajduje sie wewnatrz Column, trzeba uzyc expanded
+                ListView.builder(
+                  itemCount: tasks.length,
+                  itemBuilder: (context, index) {
+                    // return Text("${tasks[index].done ? Icons.check_circle : Icons.radio_button_unchecked} ${tasks[index].title}\n ${tasks[index].deadline}");
+                    return TaskCard(title: tasks[index].title,
+                        subtitle: "termin: ${tasks[index]
+                            .deadline} | priorytet: ${tasks[index].priority}",
+                        icon: tasks[index].done ? Icons.check_circle : Icons
+                            .radio_button_unchecked);
+                  },
+                ),
               ),
-              ],
-            ),
+            ],
+          ),
+        ),
+        floatingActionButton: FloatingActionButton(
+          onPressed: () async {
+            final Task? newTask = await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => AddTaskScreen(),
+              ),
+            );
+            if (newTask != null) {
+              setState(() {
+                TaskRepository.tasks.add(newTask);
+              });
+            }
+          },
+          child: Icon(Icons.add),
+        ),
       ),
-    ),
     );
   }
 }
 
-
-
-class Task { // definicja nowej klasy
+class Task {
+  // definicja nowej klasy
   final String title; // tytul zadania
   final String deadline; // informacja o terminie
   final bool done;
   final String priority;
+
   // final - po utworzeniu obiektu wartosc nie bedzie zmieniana
-  Task({required this.title, required this.deadline, required this.done, required this.priority});
+  Task(
+      {required this.title, required this.deadline, required this.done, required this.priority});
 // required - parametr musi zostac przekazany przy tworzeniu obiektu
 }
 
@@ -82,6 +103,71 @@ class TaskCard extends StatelessWidget {
           title: Text(title),
           subtitle: Text(subtitle),
         )
+    );
+  }
+}
+
+class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text("KrakFlow"),
+      ),
+      body: Center(
+        child: Text("Lista zadan"),
+      ),
+    );
+  }
+}
+
+class AddTaskScreen extends StatelessWidget {
+  AddTaskScreen({super.key});
+
+  final TextEditingController titleController = TextEditingController();
+  final TextEditingController deadlineController = TextEditingController();
+  final TextEditingController priorityController = TextEditingController();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text("Nowe zadanie"),
+      ),
+      body: Padding(
+        padding: EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextField(
+              controller: titleController,
+              decoration: InputDecoration(
+                labelText: "Tytuł zadania",
+                border: OutlineInputBorder(),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final newTask = Task(
+                    title: titleController.text,
+                    deadline: deadlineController.text,
+                    done: false,
+                    priority: priorityController.text
+                );
+                Navigator.pop(context, newTask);
+              },
+              child: Text("Zapisz"),
+            )
+          ],
+        ),
+      ),
     );
   }
 }
