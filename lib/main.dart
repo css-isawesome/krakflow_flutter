@@ -6,21 +6,34 @@ void main() {
 }
 
 class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'KrakFlow',
+      home: const MainTaskListScreen(), // Przenosimy logikę tutaj
+    );
+  }
+}
+
+class MainTaskListScreen extends StatefulWidget {
+  const MainTaskListScreen({super.key});
+
+  @override
+  State<MainTaskListScreen> createState() => _MainTaskListScreenState();
+}
+
+class _MainTaskListScreenState extends State<MainTaskListScreen> {
   // List<Task> tasks = [
   //   Task(title: "Projekt Flutter", deadline: "jutro"),
   //   Task(title: "Cwiczenia z matematyki", deadline: "dzisiaj"),
   //   Task(title: "Przeczytac o widgetach", deadline: "w tym tygodniu")
   // ];
 
-  final List<Task> tasks = TaskRepository.tasks;
-
-  MyApp({super.key});
-
-
   @override
   Widget build(BuildContext context) {
-    return MaterialApp( // glowna aplikacja
-      home: Scaffold( // scaffold to podsatwowy layout ekranu
+    return Scaffold(
         appBar: AppBar( // pasek gorny
           title: Text("KrakFlow"), // glowna zawartosc ekranu
         ),
@@ -29,19 +42,19 @@ class MyApp extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text("Masz dzis ${tasks.length} zadania"),
+              Text("Masz dzis ${TaskRepository.tasks.length} zadania"),
               SizedBox(height: 16),
               Text("Dzisiejsze zadania"),
               Expanded(
                 child: // poniewaz list view znajduje sie wewnatrz Column, trzeba uzyc expanded
                 ListView.builder(
-                  itemCount: tasks.length,
+                  itemCount: TaskRepository.tasks.length,
                   itemBuilder: (context, index) {
                     // return Text("${tasks[index].done ? Icons.check_circle : Icons.radio_button_unchecked} ${tasks[index].title}\n ${tasks[index].deadline}");
-                    return TaskCard(title: tasks[index].title,
-                        subtitle: "termin: ${tasks[index]
-                            .deadline} | priorytet: ${tasks[index].priority}",
-                        icon: tasks[index].done ? Icons.check_circle : Icons
+                    return TaskCard(title: TaskRepository.tasks[index].title,
+                        subtitle: "termin: ${TaskRepository.tasks[index]
+                            .deadline} | priorytet: ${TaskRepository.tasks[index].priority}",
+                        icon: TaskRepository.tasks[index].done ? Icons.check_circle : Icons
                             .radio_button_unchecked);
                   },
                 ),
@@ -53,8 +66,18 @@ class MyApp extends StatelessWidget {
           onPressed: () async {
             final Task? newTask = await Navigator.push(
               context,
-              MaterialPageRoute(
-                builder: (context) => AddTaskScreen(),
+              PageRouteBuilder(
+                pageBuilder: (context, animation, secondaryAnimation) => AddTaskScreen(),
+                transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                  final offsetAnimation = Tween<Offset>(
+                    begin: Offset(1.0,0.0),
+                    end: Offset.zero,
+                  ).animate(animation);
+                  return SlideTransition(
+                      position: offsetAnimation,
+                  child: child,
+                  );
+                }
               ),
             );
             if (newTask != null) {
@@ -65,8 +88,7 @@ class MyApp extends StatelessWidget {
           },
           child: Icon(Icons.add),
         ),
-      ),
-    );
+      );
   }
 }
 
@@ -150,6 +172,20 @@ class AddTaskScreen extends StatelessWidget {
               controller: titleController,
               decoration: InputDecoration(
                 labelText: "Tytuł zadania",
+                border: OutlineInputBorder(),
+              ),
+            ),
+            TextField(
+              controller: deadlineController,
+              decoration: InputDecoration(
+                labelText: "Deadline",
+                border: OutlineInputBorder(),
+              ),
+            ),
+            TextField(
+              controller: priorityController,
+              decoration: InputDecoration(
+                labelText: "Priorytet",
                 border: OutlineInputBorder(),
               ),
             ),
