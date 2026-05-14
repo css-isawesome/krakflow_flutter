@@ -1,8 +1,15 @@
 import 'package:flutter/material.dart';
-import '../models/task.dart';
-import '../services/task_api_service.dart';
+import 'package:hive_ce_flutter/hive_flutter.dart';
+import '/models/task.dart';
+import '/services/task_sync_service.dart';
+import '/services/task_local_database.dart';
+import 'dart:math';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Hive.initFlutter(); // inicjalizacja
+  await Hive.openBox("tasks"); // otwarcie kontenera
+
   runApp(MyApp());
 }
 
@@ -33,7 +40,17 @@ class _MainTaskListScreenState extends State<MainTaskListScreen> {
   @override
   void initState() {
     super.initState();
-    tasksFuture = TaskApiService.fetchTasks();
+    tasksFuture = loadTasks();
+  }
+
+  Future<List<Task>> loadTasks() async {
+    await TaskSyncService.loadInitialDataIfNeeded();
+    return TaskLocalDatabase.getTasks();
+  }
+
+  Future<void> addTask(Task task) async {
+    await TaskLocalDatabase.addTask(task);
+    await loadTasks();
   }
 
   @override
@@ -60,11 +77,12 @@ class _MainTaskListScreenState extends State<MainTaskListScreen> {
                             child: const Text("Anuluj"),
                           ),
                           TextButton(
-                            onPressed: () {
+                            onPressed: () async{
+                              await TaskLocalDatabase.deleteAllTasks();
                               setState(() {
-                                allTasks?.clear();
+                                tasksFuture = loadTasks();
                               });
-                              Navigator.pop(context);
+                              // Navigator.pop(context); // Don't use 'BuildContext's across async gaps.
                             },
                             child: const Text("Usuń"),
                           ),
@@ -131,9 +149,10 @@ class _MainTaskListScreenState extends State<MainTaskListScreen> {
                           alignment: Alignment.centerRight,
                           child: const Icon(Icons.delete, color: Colors.white),
                         ),
-                        onDismissed: (_) {
+                        onDismissed: (_) async{
+                          await TaskLocalDatabase.deleteTask(index);
                           setState(() {
-                            allTasks!.remove(task);
+                            tasksFuture = loadTasks();
                           });
                         },
                         child: TaskCard(
@@ -141,9 +160,19 @@ class _MainTaskListScreenState extends State<MainTaskListScreen> {
                           subtitle:
                               "termin: ${task.deadline} | priorytet: ${task.priority}",
                           done: task.done,
-                          onChanged: (value) {
+                          onChanged: (value) async {
+                            final updatedTask = Task(
+                              id: task.id,
+                              title: task.title,
+                              deadline: task.deadline,
+                              priority: task.priority,
+                              done: value ?? false,
+                            );
+
+                            await TaskLocalDatabase.updateTask(updatedTask);
+
                             setState(() {
-                              task.done = value!;
+                              tasksFuture = loadTasks();
                             });
                           },
                           onTap: () async {
@@ -155,10 +184,9 @@ class _MainTaskListScreenState extends State<MainTaskListScreen> {
                               ),
                             );
                             if (updatedTask != null) {
+                              await TaskLocalDatabase.updateTask(updatedTask);
                               setState(() {
-                                // Szukamy indexu w oryginalnej liście i podmieniamy
-                                int originalIndex = allTasks!.indexOf(task);
-                                allTasks![originalIndex] = updatedTask;
+                                tasksFuture = loadTasks();
                               });
                             }
                           },
@@ -290,6 +318,7 @@ class AddTaskScreen extends StatelessWidget {
             ElevatedButton(
               onPressed: () {
                 final newTask = Task(
+                  id: Random().nextInt(1000000),
                   title: titleController.text,
                   deadline: deadlineController.text,
                   done: false,
@@ -352,6 +381,7 @@ class EditTaskScreen extends StatelessWidget {
             ElevatedButton(
               onPressed: () {
                 final newTask = Task(
+                  id: Random().nextInt(1000000),
                   title: titleController.text,
                   deadline: deadlineController.text,
                   done: false,
