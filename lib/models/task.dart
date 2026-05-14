@@ -1,5 +1,3 @@
-import 'main.dart';
-
 class Task {
   // definicja nowej klasy
   final String title; // tytul zadania
